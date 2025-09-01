@@ -28,6 +28,7 @@ public class PacketTester {
 
     public List<PacketPart> identifyEssentialParts() {
         for (PacketPart part : parts) {
+
             part.essential = false;
 
             byte[] modifiedRequest = buildModifiedRequest(part);
@@ -45,9 +46,8 @@ public class PacketTester {
             callbacks.printOutput(String.format("Tested %s: %s = %s | essential: %s",
                     part.type, part.name, part.value, part.essential));
 
-            // ⏱️ Add delay after each request
             try {
-                Thread.sleep(3000); // 3-second pacing
+                Thread.sleep(3000); // ⏱️ 3-second pacing
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 callbacks.printError("Thread interrupted during delay: " + e.getMessage());
@@ -60,20 +60,46 @@ public class PacketTester {
 
     private byte[] buildModifiedRequest(PacketPart excludedPart) {
         IRequestInfo requestInfo = helpers.analyzeRequest(originalMessage);
-        List<String> headers = new ArrayList<>(requestInfo.getHeaders());
+        List<String> rawHeaders = requestInfo.getHeaders();
         int bodyOffset = requestInfo.getBodyOffset();
         String body = new String(Arrays.copyOfRange(originalRequest, bodyOffset, originalRequest.length));
 
-        // Remove excluded part
+        // 🧼 Deduplicate headers
+        Map<String, String> distinctHeaderMap = new LinkedHashMap<>();
+        String requestLine = rawHeaders.get(0);
+        distinctHeaderMap.put("request-line", requestLine);
+
+        for (int i = 1; i < rawHeaders.size(); i++) {
+            String header = rawHeaders.get(i);
+            int colonIndex = header.indexOf(":");
+            if (colonIndex == -1)
+                continue;
+
+            String name = header.substring(0, colonIndex).trim().toLowerCase();
+            String value = header.substring(colonIndex + 1).trim();
+
+            if (!distinctHeaderMap.containsKey(name)) {
+                distinctHeaderMap.put(name, value);
+            }
+        }
+
+        // 🧹 Remove excluded part
         List<String> newHeaders = new ArrayList<>();
-        for (String header : headers) {
-            if (excludedPart.type.equals("header")
-                    && header.toLowerCase().startsWith(excludedPart.name.toLowerCase() + ":")) {
+        for (Map.Entry<String, String> entry : distinctHeaderMap.entrySet()) {
+            String key = entry.getKey();
+            String value = entry.getValue();
+
+            if (key.equals("request-line")) {
+                newHeaders.add(value);
                 continue;
             }
-            if (excludedPart.type.equals("cookie") && header.toLowerCase().startsWith("cookie:")) {
-                String cookieLine = header.substring(7).trim();
-                String[] cookies = cookieLine.split(";");
+
+            if (excludedPart.type.equals("header") && key.equalsIgnoreCase(excludedPart.name)) {
+                continue;
+            }
+
+            if (excludedPart.type.equals("cookie") && key.equals("cookie")) {
+                String[] cookies = value.split(";");
                 List<String> keptCookies = new ArrayList<>();
                 for (String cookie : cookies) {
                     if (!cookie.trim().startsWith(excludedPart.name + "=")) {
@@ -85,10 +111,11 @@ public class PacketTester {
                 }
                 continue;
             }
-            newHeaders.add(header);
+
+            newHeaders.add(capitalize(key) + ": " + value);
         }
 
-        // Remove query param
+        // 🔍 Remove query param
         String firstLine = newHeaders.get(0);
         if (excludedPart.type.equals("query")) {
             int qIdx = firstLine.indexOf("?");
@@ -106,11 +133,17 @@ public class PacketTester {
             }
         }
 
-        // Remove body
+        // 🧯 Remove body
         if (excludedPart.type.equals("body")) {
             body = "";
         }
 
         return helpers.buildHttpMessage(newHeaders, body.getBytes());
+    }
+
+    private String capitalize(String input) {
+        if (input == null || input.isEmpty())
+            return input;
+        return input.substring(0, 1).toUpperCase() + input.substring(1);
     }
 }

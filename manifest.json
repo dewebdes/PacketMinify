@@ -1,0 +1,12 @@
+{
+  "name": "PacketMinify",
+  "version": "1.0",
+  "description": "Minimizes HTTP packets by identifying essential headers, cookies, query parameters, and body content. Sends minimized requests to Repeater for further testing.",
+  "author": "Kave & Microsoft Copilot",
+  "extensionType": "burp",
+  "mainClass": "BurpExtender",
+  "burpVersion": "2023.12",
+  "requiredApis": [
+    "burp-extender-api-2.1"
+  ]
+}

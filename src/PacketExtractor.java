@@ -51,11 +51,11 @@ public class PacketExtractor {
             }
         }
 
-        // Body
+        // Body (preserve raw bytes)
         int bodyOffset = requestInfo.getBodyOffset();
-        String body = new String(Arrays.copyOfRange(requestBytes, bodyOffset, requestBytes.length));
-        if (!body.trim().isEmpty()) {
-            parts.add(new PacketPart("body", "(body)", body));
+        byte[] bodyBytes = Arrays.copyOfRange(requestBytes, bodyOffset, requestBytes.length);
+        if (bodyBytes.length > 0) {
+            parts.add(new PacketPart("body", "(body)", bodyBytes));
         }
 
         return parts;

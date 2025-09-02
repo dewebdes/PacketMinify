@@ -4,7 +4,8 @@ import java.util.*;
 import java.net.URL;
 
 public class PacketMinifier {
-    public static String buildMinimizedRequest(IRequestInfo requestInfo, List<PacketPart> parts) {
+    public static byte[] buildMinimizedRequest(IExtensionHelpers helpers, IRequestInfo requestInfo,
+            List<PacketPart> parts) {
         List<String> headers = new ArrayList<>();
         String method = requestInfo.getMethod();
         URL url = requestInfo.getUrl();
@@ -52,15 +53,19 @@ public class PacketMinifier {
             headers.add(entry.getKey() + ": " + entry.getValue());
         }
 
-        // Rebuild body
-        String body = "";
+        // Rebuild body (use rawBytes if available)
+        byte[] bodyBytes = new byte[0];
         for (PacketPart part : parts) {
             if (part.essential && part.type.equals("body")) {
-                body = part.value;
+                if (part.rawBytes != null) {
+                    bodyBytes = part.rawBytes;
+                } else {
+                    bodyBytes = part.value.getBytes();
+                }
                 break;
             }
         }
 
-        return String.join("\r\n", headers) + "\r\n\r\n" + body;
+        return helpers.buildHttpMessage(headers, bodyBytes);
     }
 }

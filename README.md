@@ -14,6 +14,7 @@ Crafted by **Kave** & **Microsoft Copilot**, this tool treats packet reduction a
 - Reconstructs a minimized request using only essential parts
 - Displays original and minimized packets in a custom Burp tab
 - Sends minimized request to a new Repeater tab for live testing
+- Detects cases where minimized packets fail to replicate original behavior — flagging them for deeper manual analysis
 
 ---
 
@@ -23,22 +24,33 @@ Crafted by **Kave** & **Microsoft Copilot**, this tool treats packet reduction a
 PacketMinify/
 ├── src/
 │   ├── BurpExtender.java
-│   ├── PacketMinifyTab.java
+│   ├── MinifierEngine.java
 │   ├── PacketExtractor.java
-│   ├── PacketTester.java
 │   ├── PacketMinifier.java
-│   ├── RepeaterSender.java
+│   ├── PacketMinifyTab.java
 │   ├── PacketPart.java
+│   ├── PacketTester.java
+│   ├── RepeaterSender.java
+│   ├── ResponseComparator.java
 │   └── Utils.java
 │
 ├── lib/
 │   └── burp-extender-api-2.1.jar
 │
 ├── build/
-│   └── PacketMinify.jar
+│   ├── PacketMinify.jar
+│   ├── BurpExtender.class
+│   ├── PacketExtractor.class
+│   ├── PacketMinifier.class
+│   ├── PacketMinifyTab.class
+│   ├── PacketPart.class
+│   ├── PacketTester.class
+│   ├── RepeaterSender.class
+│   ├── ResponseComparator.class
+│   └── Utils.class
 │
-├── README.md
-└── manifest.json
+├── manifest.json
+└── README.md
 ```
 
 ---
@@ -82,6 +94,19 @@ PacketMinify performs the following steps:
 2. **Test Essentials**: Each part is temporarily removed and the modified request is sent. If the response changes, the part is marked essential.
 3. **Reconstruct Request**: Only essential parts are used to rebuild the minimized packet.
 4. **Dispatch to Repeater**: The minimized request is sent to a new Repeater tab for further inspection.
+5. **Compare Responses**: If the minimized packet fails to replicate the original response, the extension flags the flow as “interesting” — suggesting deeper manual analysis.
+
+---
+
+## 🔍 Symbolic Analysis Mode
+
+When the final minimized packet does **not** yield the same response as the original, PacketMinify enters a symbolic diagnostic mode. This often reveals **interdependent headers** like `Origin` and `Referer`, which may appear non-essential in isolation but are jointly required.
+
+Such flows are ideal for **handy analysis**, allowing the user to:
+
+- Observe fallback logic and header interdependence
+- Decode server-side rituals and tolerance thresholds
+- Refine attack logic based on symbolic packet behavior
 
 ---
 
